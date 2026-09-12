@@ -1,0 +1,788 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI Based Building Resource Estimator</title>
+<meta name="description" content="AI Based Building Resource Estimator - construction materials, labour, BOQ and cost estimation prototype.">
+<style>
+:root{
+  --bg:#f4f5f7; --card:#fff; --text:#111827; --muted:#6b7280;
+  --border:#d1d5db; --dark:#111827; --dark2:#1f2937; --accent:#111827;
+  --good:#166534; --goodbg:#dcfce7; --warn:#92400e; --warnbg:#fef3c7;
+  --shadow:0 8px 28px rgba(0,0,0,.07); --radius:16px;
+}
+*{box-sizing:border-box}
+body{margin:0;font-family:Arial,Helvetica,sans-serif;background:var(--bg);color:var(--text);line-height:1.5}
+button,input,select{font:inherit}
+.topbar{position:sticky;top:0;z-index:30;background:var(--dark);color:#fff;box-shadow:0 2px 12px rgba(0,0,0,.2)}
+.nav{max-width:1400px;margin:auto;display:flex;gap:8px;align-items:center;padding:12px 16px;overflow:auto}
+.brand{font-weight:800;white-space:nowrap;margin-right:10px}
+.nav button{border:1px solid #374151;background:#1f2937;color:#fff;padding:9px 12px;border-radius:10px;cursor:pointer;white-space:nowrap}
+.nav button:hover,.nav button.active{background:#fff;color:#111}
+main{max-width:1400px;margin:auto;padding:24px}
+.page{display:none}
+.page.active{display:block}
+.hero{background:linear-gradient(135deg,#111827,#374151);color:#fff;border-radius:24px;padding:34px;box-shadow:var(--shadow);margin-bottom:22px}
+.hero h1{margin:0 0 8px;font-size:clamp(30px,4vw,48px)}
+.hero p{margin:0;color:#e5e7eb;max-width:900px}
+.grid{display:grid;gap:18px}
+.grid-2{grid-template-columns:repeat(auto-fit,minmax(280px,1fr))}
+.grid-3{grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}
+.card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:20px;box-shadow:var(--shadow)}
+.card h2,.card h3{margin-top:0}
+.kpi{font-size:30px;font-weight:800}
+.muted{color:var(--muted)}
+.form-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:16px}
+.field label{display:block;font-weight:700;margin-bottom:6px}
+.field input,.field select,.field textarea{width:100%;padding:11px 12px;border:1px solid var(--border);border-radius:10px;background:#fff}
+.field textarea{min-height:100px;resize:vertical}
+.btn{border:0;border-radius:10px;padding:11px 16px;cursor:pointer;font-weight:700}
+.btn-primary{background:#111827;color:#fff}.btn-secondary{background:#e5e7eb;color:#111827}
+.btn-success{background:#166534;color:#fff}.btn-danger{background:#991b1b;color:#fff}
+.btn-sm{padding:7px 10px;font-size:13px}
+.actions{display:flex;flex-wrap:wrap;gap:10px;margin-top:18px}
+.notice{padding:14px 16px;border-radius:12px;border:1px solid #bfdbfe;background:#eff6ff}
+.warn{padding:14px 16px;border-radius:12px;border:1px solid #fde68a;background:var(--warnbg);color:var(--warn)}
+.good{padding:14px 16px;border-radius:12px;border:1px solid #bbf7d0;background:var(--goodbg);color:var(--good)}
+.stage{border:1px solid var(--border);border-radius:14px;margin:12px 0;background:#fff;overflow:hidden}
+.stage-head{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:16px 18px;background:#f9fafb}
+.stage-head h3{margin:0}
+.stage-body{display:none;padding:16px;border-top:1px solid var(--border)}
+.stage.open .stage-body{display:block}
+.table-wrap{overflow:auto}
+table{border-collapse:collapse;width:100%;min-width:760px}
+th,td{padding:10px 12px;border-bottom:1px solid var(--border);text-align:left}
+th{background:#f9fafb}
+.right{text-align:right}
+.badge{display:inline-block;padding:3px 8px;border-radius:99px;background:#e5e7eb;font-size:12px;font-weight:700}
+.footer{padding:30px 0;color:var(--muted);text-align:center}
+.small{font-size:13px}
+hr{border:0;border-top:1px solid var(--border);margin:20px 0}
+.print-only{display:none}
+@media print{
+  .topbar,.actions,.no-print{display:none!important}
+  .page{display:block!important}
+  body{background:#fff}
+  .card,.hero{box-shadow:none;border:1px solid #ddd}
+  .print-only{display:block}
+}
+</style>
+</head>
+<body>
+
+<div class="topbar no-print">
+  <div class="nav">
+    <div class="brand">🏗️ AI Building Resource Estimator</div>
+    <button data-page="dashboard">🏠 Dashboard</button>
+    <button data-page="project">📐 Project Input</button>
+    <button data-page="materials">🧱 Materials A–Z</button>
+    <button data-page="boq">📋 BOQ & Cost</button>
+    <button data-page="rates">💰 Rates</button>
+    <button data-page="validation">✅ Validation</button>
+    <button data-page="report">📄 Report</button>
+  </div>
+</div>
+
+<main>
+  <!-- DASHBOARD -->
+  <section id="dashboard" class="page active">
+    <div class="hero">
+      <h1>AI Based Building Resource Estimator</h1>
+      <p>Building material, labour and cost estimation prototype for academic demonstration. Enter project parameters, calculate preliminary resources, inspect A–Z construction stages, build a BOQ and print a report.</p>
+    </div>
+
+    <div class="grid grid-3">
+      <div class="card"><div class="muted">Project Area</div><div id="dashArea" class="kpi">0 m²</div></div>
+      <div class="card"><div class="muted">Floors</div><div id="dashFloors" class="kpi">0</div></div>
+      <div class="card"><div class="muted">Estimated Construction Cost</div><div id="dashCost" class="kpi">₹0</div></div>
+    </div>
+
+    <div class="grid grid-2" style="margin-top:18px">
+      <div class="card">
+        <h2>Quick Start</h2>
+        <p class="muted">Enter the building values first. Then review materials, BOQ, rates and the final report.</p>
+        <div class="actions">
+          <button class="btn btn-primary" onclick="go('project')">Start / Edit Project</button>
+          <button class="btn btn-secondary" onclick="go('materials')">Open A–Z Breakdown</button>
+          <button class="btn btn-secondary" onclick="go('boq')">Open BOQ</button>
+        </div>
+      </div>
+      <div class="card">
+        <h2>Engineering Note</h2>
+        <div class="warn">
+          Current quantities are <b>preliminary prototype estimates</b>. Exact engineering quantities require drawings, member dimensions, specifications, measurement rules and verified current standards/rates.
+        </div>
+      </div>
+    </div>
+
+    <div class="card" style="margin-top:18px">
+      <h2>Current Project</h2>
+      <div id="dashProject" class="muted">No project saved.</div>
+    </div>
+  </section>
+
+  <!-- PROJECT -->
+  <section id="project" class="page">
+    <div class="card">
+      <h2>Project Input</h2>
+      <p class="muted">Enter all available project values. These are stored in your browser using localStorage.</p>
+      <div class="form-grid">
+        <div class="field"><label>Building Area (m²)</label><input id="area" type="number" min="1" step="0.01" value="100"></div>
+        <div class="field"><label>Building Type</label><select id="buildingType"><option>Residential</option><option>Commercial</option><option>Institutional</option></select></div>
+        <div class="field"><label>Number of Floors</label><input id="floors" type="number" min="1" step="1" value="1"></div>
+        <div class="field"><label>Number of Rooms</label><input id="rooms" type="number" min="1" step="1" value="4"></div>
+        <div class="field"><label>Foundation Type</label><select id="foundation"><option>Isolated Footing</option><option>Raft Foundation</option><option>Pile Foundation</option></select></div>
+        <div class="field"><label>Wall Material</label><select id="wallMaterial"><option>Brick</option><option>AAC Block</option></select></div>
+        <div class="field"><label>Concrete Grade</label><select id="concreteGrade"><option>M20</option><option>M25</option><option>M30</option></select></div>
+        <div class="field"><label>Location</label><input id="location" type="text" value="Tamil Nadu, India"></div>
+      </div>
+      <div class="actions">
+        <button class="btn btn-primary" onclick="saveProject()">Calculate & Save</button>
+        <button class="btn btn-secondary" onclick="loadProject()">Reload Saved Values</button>
+        <button class="btn btn-danger" onclick="clearProject()">Clear Project</button>
+      </div>
+      <div id="projectMsg" style="margin-top:14px"></div>
+    </div>
+
+    <div class="card">
+      <h3>What the software calculates</h3>
+      <div class="grid grid-3">
+        <div>🧱 Cement — bags</div>
+        <div>🔩 Reinforcement steel — kg</div>
+        <div>⛱️ Sand — m³</div>
+        <div>🪨 Coarse aggregate — m³</div>
+        <div>🧱 Bricks / AAC blocks — Nos.</div>
+        <div>💧 Water — litres</div>
+        <div>👷 Labour — man-days</div>
+        <div>💰 Material cost — ₹</div>
+        <div>💵 Total construction cost — ₹</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- MATERIALS -->
+  <section id="materials" class="page">
+    <div class="card">
+      <h2>A–Z Construction Materials & Work Breakdown</h2>
+      <p class="muted">Click <b>Break Down</b> to show the stage details and calculated values. Use Open All to display every stage.</p>
+      <div class="actions">
+        <button class="btn btn-primary btn-sm" onclick="openAllStages()">Open All</button>
+        <button class="btn btn-secondary btn-sm" onclick="closeAllStages()">Close All</button>
+        <button class="btn btn-secondary btn-sm" onclick="recalculate()">↻ Recalculate from Project</button>
+      </div>
+      <div id="materialsSummary" style="margin-top:14px"></div>
+      <div id="stages"></div>
+    </div>
+  </section>
+
+  <!-- BOQ -->
+  <section id="boq" class="page">
+    <div class="card">
+      <h2>BOQ & Cost</h2>
+      <p class="muted">Quantities are generated from the current preliminary estimation model and rates entered below.</p>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Item</th><th>Stage</th><th>Qty</th><th>Unit</th><th class="right">Rate (₹)</th><th class="right">Amount (₹)</th></tr></thead>
+          <tbody id="boqBody"></tbody>
+          <tfoot id="boqFoot"></tfoot>
+        </table>
+      </div>
+      <div class="actions">
+        <button class="btn btn-primary" onclick="go('project')">Edit Project</button>
+        <button class="btn btn-secondary" onclick="window.print()">Print / Save PDF</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- RATES -->
+  <section id="rates" class="page">
+    <div class="card">
+      <h2>Rate Database</h2>
+      <p class="muted">Edit the preliminary rates for your academic demonstration. For engineering use, replace them with verified current SOR/local rates for the project location and date.</p>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Key</th><th>Item</th><th>Unit</th><th>Rate (₹)</th></tr></thead>
+          <tbody id="ratesBody"></tbody>
+        </table>
+      </div>
+      <div class="actions">
+        <button class="btn btn-primary" onclick="saveRates()">Save Rates</button>
+        <button class="btn btn-secondary" onclick="resetRates()">Reset Demo Rates</button>
+      </div>
+      <div id="ratesMsg" style="margin-top:14px"></div>
+    </div>
+  </section>
+
+  <!-- VALIDATION -->
+  <section id="validation" class="page">
+    <div class="card">
+      <h2>Validation & Functional Tests</h2>
+      <p class="muted">This page checks that project data, calculations, stages and BOQ totals are internally connected.</p>
+      <div id="testResults"></div>
+      <div class="actions">
+        <button class="btn btn-primary" onclick="runTests()">Run Tests</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>Model limitation</h3>
+      <div class="warn">
+        This prototype does not claim an ML accuracy score. A real ML evaluation requires a defined dataset, train/test split, model training, validation metrics and reproducible experiments.
+      </div>
+    </div>
+  </section>
+
+  <!-- REPORT -->
+  <section id="report" class="page">
+    <div class="card">
+      <h2>Project Report Snapshot</h2>
+      <div id="reportContent"></div>
+      <div class="actions no-print">
+        <button class="btn btn-primary" onclick="window.print()">Print / Save PDF</button>
+      </div>
+    </div>
+  </section>
+
+  <div class="footer no-print">
+    AI Based Building Resource Estimator • Academic prototype • Quantities must be verified against drawings, specifications and applicable standards before real construction use.
+  </div>
+</main>
+
+<script>
+/* ==========================================================
+   AI BASED BUILDING RESOURCE ESTIMATOR
+   Single-file GitHub Pages version
+   ========================================================== */
+
+const DEMO_RATES = {
+  cement: 450,
+  steel: 65,
+  sand: 1800,
+  aggregate: 1600,
+  brick: 9,
+  aac: 70,
+  water: 1,
+  labour: 800,
+  excavation: 250,
+  pcc: 6500,
+  rcc: 8500,
+  formwork: 650,
+  plaster: 320,
+  flooring: 850,
+  paint: 260,
+  electrical: 950,
+  plumbing: 1100,
+  waterproofing: 180,
+  doorsWindows: 2200,
+  external: 600,
+  cleaning: 80,
+  bindingWire: 100,
+  primer: 220
+};
+
+const STAGES = [
+  {
+    code:'A', title:'Site & Preliminary Works',
+    items:[
+      ['Site cleaning','Area dependent','m²','external'],
+      ['Setting out / layout','Area dependent','m²','external'],
+      ['Temporary facilities & consumables','Allow provisional','LS','external']
+    ]
+  },
+  {
+    code:'B', title:'Earthwork & Excavation',
+    items:[
+      ['Excavation','Area based preliminary factor','m³','excavation'],
+      ['Backfilling / compaction','Allow preliminary','m³','excavation']
+    ]
+  },
+  {
+    code:'C', title:'Foundation',
+    items:[
+      ['PCC','Preliminary foundation allowance','m³','pcc'],
+      ['Foundation concrete','Preliminary allowance','m³','rcc'],
+      ['Foundation reinforcement steel','Preliminary allowance','kg','steel'],
+      ['Binding wire','Steel related','kg','bindingWire'],
+      ['Foundation formwork','Preliminary allowance','m²','formwork'],
+      ['Foundation waterproofing','Where applicable','m²','waterproofing']
+    ]
+  },
+  {
+    code:'D', title:'RCC Structural Works',
+    items:[
+      ['RCC concrete','Preliminary structural allowance','m³','rcc'],
+      ['Reinforcement steel','Preliminary structural allowance','kg','steel'],
+      ['Binding wire','Steel related','kg','bindingWire'],
+      ['Column / beam / slab formwork','Preliminary allowance','m²','formwork']
+    ]
+  },
+  {
+    code:'E', title:'Masonry',
+    items:[
+      ['Bricks / AAC blocks','Wall material dependent','Nos.','brickOrAac'],
+      ['Mortar sand','Preliminary allowance','m³','sand'],
+      ['Cement for masonry','Preliminary allowance','bags','cement']
+    ]
+  },
+  {
+    code:'F', title:'Plastering & Rendering',
+    items:[
+      ['Internal / external plaster','Area dependent','m²','plaster'],
+      ['Cement for plaster','Preliminary allowance','bags','cement'],
+      ['Plaster sand','Preliminary allowance','m³','sand']
+    ]
+  },
+  {
+    code:'G', title:'Flooring',
+    items:[
+      ['Floor tiles / finish','Area dependent','m²','flooring'],
+      ['Flooring mortar / adhesive','Area dependent','m²','flooring']
+    ]
+  },
+  {
+    code:'H', title:'Doors, Windows & Glazing',
+    items:[
+      ['Doors, windows & glazing','Opening allowance / preliminary','m²','doorsWindows'],
+      ['Hardware / accessories','Preliminary allowance','LS','doorsWindows']
+    ]
+  },
+  {
+    code:'I', title:'Roofing & Waterproofing',
+    items:[
+      ['Roofing / terrace treatment','Area dependent','m²','waterproofing'],
+      ['Waterproofing system','Area dependent','m²','waterproofing']
+    ]
+  },
+  {
+    code:'J', title:'Painting & Finishing',
+    items:[
+      ['Wall primer','Area dependent','m²','primer'],
+      ['Interior / exterior paint','Area dependent','m²','paint'],
+      ['Putty / surface preparation','Area dependent','m²','paint'],
+      ['Finishing consumables','Allow provisional','LS','paint']
+    ]
+  },
+  {
+    code:'K', title:'Electrical',
+    items:[
+      ['Conduits & wiring','Preliminary allowance','m²','electrical'],
+      ['Switches / sockets / points','Room dependent','Nos.','electrical'],
+      ['Distribution board & protection','Room dependent','LS','electrical'],
+      ['Earthing','Provisional','LS','electrical'],
+      ['Light / fan fixtures','Room dependent','Nos.','electrical']
+    ]
+  },
+  {
+    code:'L', title:'Plumbing & Sanitary',
+    items:[
+      ['Water supply piping & fittings','Room/area dependent','m','plumbing'],
+      ['Drainage piping & fittings','Room/area dependent','m','plumbing'],
+      ['Sanitary fixtures','Room dependent','Nos.','plumbing'],
+      ['Water tank / pump allowance','Provisional','LS','plumbing']
+    ]
+  },
+  {
+    code:'M', title:'External Works',
+    items:[
+      ['External paving / pathways','Area dependent','m²','external'],
+      ['Site drainage / external utilities','Provisional','LS','external'],
+      ['Other external works','Provisional','LS','external']
+    ]
+  },
+  {
+    code:'N', title:'Labour & Consumables',
+    items:[
+      ['General labour','Area and floor dependent','man-days','labour'],
+      ['Specialist labour allowance','Area dependent','man-days','labour'],
+      ['General consumables','Provisional','LS','labour']
+    ]
+  },
+  {
+    code:'O', title:'Finalization / Handover',
+    items:[
+      ['Final cleaning','Area dependent','m²','cleaning'],
+      ['Testing / commissioning consumables','Provisional','LS','cleaning'],
+      ['Touch-up & sealants','Provisional','LS','cleaning'],
+      ['As-built documentation / handover','Provisional','LS','cleaning']
+    ]
+  }
+];
+
+function money(n){
+  return '₹' + Number(n||0).toLocaleString('en-IN',{maximumFractionDigits:0});
+}
+function fmt(n,d=2){
+  return Number(n||0).toLocaleString('en-IN',{maximumFractionDigits:d});
+}
+function getProject(){
+  try{return JSON.parse(localStorage.getItem('buildingProject')) || null;}
+  catch(e){return null;}
+}
+function setProject(p){localStorage.setItem('buildingProject',JSON.stringify(p));}
+function getRates(){
+  try{return {...DEMO_RATES,...JSON.parse(localStorage.getItem('buildingRates')||'{}')};}
+  catch(e){return {...DEMO_RATES};}
+}
+function setRates(r){localStorage.setItem('buildingRates',JSON.stringify(r));}
+
+function normalizeProject(p){
+  return {
+    area: Number(p.area)||0,
+    buildingType:p.buildingType||'Residential',
+    floors: Number(p.floors)||1,
+    rooms:Number(p.rooms)||1,
+    foundation:p.foundation||'Isolated Footing',
+    wallMaterial:p.wallMaterial||'Brick',
+    concreteGrade:p.concreteGrade||'M20',
+    location:p.location||''
+  };
+}
+
+/* Preliminary estimation model.
+   These factors are demonstration factors only. */
+function calculate(p=getProject()){
+  p = normalizeProject(p||{});
+  const area = p.area;
+  const floors = p.floors;
+  const rooms = p.rooms;
+
+  const totalFloorArea = area * floors;
+
+  const concrete = totalFloorArea * 0.11;
+  const foundationPcc = area * 0.02;
+  const rcc = concrete;
+  const steel = totalFloorArea * 4.5;
+  const cement = totalFloorArea * 0.40;
+  const sand = totalFloorArea * 0.11;
+  const aggregate = totalFloorArea * 0.09;
+
+  const wallArea = totalFloorArea * 2.8;
+  const blocks = p.wallMaterial === 'AAC'
+    ? wallArea / 0.09
+    : wallArea * 12.5;
+
+  const plasterArea = wallArea * 1.15;
+  const flooringArea = totalFloorArea * 0.95;
+  const paintArea = plasterArea * 1.10;
+  const openingsArea = totalFloorArea * 0.15;
+  const roofArea = area * 1.02;
+
+  const water = cement * 35;
+  const labour = totalFloorArea * 0.55 + rooms * 3;
+
+  const excavation = area * 0.18;
+  const backfill = excavation * 0.65;
+  const foundationForm = area * 0.18;
+  const structuralForm = totalFloorArea * 0.75;
+
+  const electricalPoints = Math.max(rooms*5, Math.round(totalFloorArea/12));
+  const plumbingLength = Math.max(rooms*5, Math.round(totalFloorArea*0.05));
+  const sanitaryFixtures = Math.max(rooms, Math.ceil(rooms/2)+2);
+
+  return {
+    ...p,
+    totalFloorArea, concrete, foundationPcc, rcc, steel, cement, sand,
+    aggregate, wallArea, blocks, plasterArea, flooringArea, paintArea,
+    openingsArea, roofArea, water, labour, excavation, backfill,
+    foundationForm, structuralForm, electricalPoints, plumbingLength,
+    sanitaryFixtures
+  };
+}
+
+function buildBoq(){
+  const p = getProject();
+  const c = calculate(p);
+  const r = getRates();
+  if(!p || !p.area) return [];
+
+  return [
+    ['Excavation','B',c.excavation,'m³',r.excavation],
+    ['PCC','C',c.foundationPcc,'m³',r.pcc],
+    ['RCC concrete','D',c.rcc,'m³',r.rcc],
+    ['Reinforcement steel','C/D',c.steel,'kg',r.steel],
+    ['Cement','C/D/E/F',c.cement,'bags',r.cement],
+    ['Sand','C/D/E/F',c.sand,'m³',r.sand],
+    ['Coarse aggregate','D',c.aggregate,'m³',r.aggregate],
+    [p.wallMaterial === 'AAC' ? 'AAC blocks':'Bricks','E',c.blocks,'Nos.',p.wallMaterial === 'AAC' ? r.aac : r.brick],
+    ['Water','D/E/F',c.water,'litres',r.water],
+    ['Plastering','F',c.plasterArea,'m²',r.plaster],
+    ['Flooring','G',c.flooringArea,'m²',r.flooring],
+    ['Doors/windows/glazing','H',c.openingsArea,'m²',r.doorsWindows],
+    ['Roofing / waterproofing','I',c.roofArea,'m²',r.waterproofing],
+    ['Painting & finishing','J',c.paintArea,'m²',r.paint],
+    ['Electrical works','K',c.electricalPoints,'Nos.',r.electrical],
+    ['Plumbing & sanitary','L',c.plumbingLength+c.sanitaryFixtures,'Nos./m',r.plumbing],
+    ['External works','M',c.area*0.25,'m²',r.external],
+    ['Labour','N',c.labour,'man-days',r.labour],
+    ['Final cleaning / handover','O',c.area*0.85,'m²',r.cleaning]
+  ];
+}
+
+function quantityFor(key,c){
+  switch(key){
+    case 'external': return c.area;
+    case 'excavation': return c.excavation;
+    case 'pcc': return c.foundationPcc;
+    case 'rcc': return c.rcc;
+    case 'steel': return c.steel;
+    case 'bindingWire': return c.steel * 0.015;
+    case 'formwork': return c.structuralForm;
+    case 'waterproofing': return c.roofArea;
+    case 'brickOrAac': return c.blocks;
+    case 'sand': return c.sand;
+    case 'cement': return c.cement;
+    case 'plaster': return c.plasterArea;
+    case 'flooring': return c.flooringArea;
+    case 'doorsWindows': return c.openingsArea;
+    case 'paint': return c.paintArea;
+    case 'primer': return c.paintArea;
+    case 'electrical': return c.electricalPoints;
+    case 'plumbing': return c.plumbingLength;
+    case 'labour': return c.labour;
+    case 'cleaning': return c.area*0.85;
+    default:return 0;
+  }
+}
+function unitFor(key){
+  const m={
+    external:'m²',excavation:'m³',pcc:'m³',rcc:'m³',steel:'kg',
+    bindingWire:'kg',formwork:'m²',waterproofing:'m²',brickOrAac:'Nos.',
+    sand:'m³',cement:'bags',plaster:'m²',flooring:'m²',doorsWindows:'m²',
+    paint:'m²',primer:'m²',electrical:'Nos.',plumbing:'m',labour:'man-days',
+    cleaning:'m²'
+  };
+  return m[key]||'LS';
+}
+function rateKeyFor(itemKey, p){
+  if(itemKey==='brickOrAac') return p.wallMaterial==='AAC'?'aac':'brick';
+  return itemKey;
+}
+
+function renderStages(){
+  const el=document.getElementById('stages');
+  const p=getProject();
+  if(!p || !p.area){
+    el.innerHTML='<div class="warn">Please enter and save the project values first.</div>';
+    document.getElementById('materialsSummary').innerHTML='';
+    return;
+  }
+  const c=calculate(p), r=getRates();
+  document.getElementById('materialsSummary').innerHTML =
+    '<div class="good"><b>Calculated:</b> '+fmt(c.totalFloorArea)+' m² total floor area • Cement '+fmt(c.cement)+' bags • Steel '+fmt(c.steel)+' kg • Sand '+fmt(c.sand)+' m³ • Aggregate '+fmt(c.aggregate)+' m³ • Labour '+fmt(c.labour)+' man-days</div>';
+
+  el.innerHTML='';
+  STAGES.forEach((s,idx)=>{
+    const box=document.createElement('div');
+    box.className='stage';
+    box.dataset.stage=idx;
+    const head=document.createElement('div');
+    head.className='stage-head';
+    head.innerHTML='<div><h3>'+s.code+'. '+s.title+'</h3><span class="badge">Break Down</span></div><button class="btn btn-secondary btn-sm" onclick="toggleStage('+idx+')">Break Down</button>';
+    const body=document.createElement('div');
+    body.className='stage-body';
+
+    let rows='';
+    s.items.forEach(([name,desc,unit,key])=>{
+      let qty=quantityFor(key,c);
+      let actualUnit=unitFor(key);
+      if(unit==='LS'){qty=1;actualUnit='LS'}
+      const rk=rateKeyFor(key,p);
+      const rate = r[rk] || 0;
+      const amount = qty*rate;
+      rows += '<tr><td><b>'+name+'</b><div class="small muted">'+desc+'</div></td><td>'+fmt(qty)+'</td><td>'+actualUnit+'</td><td class="right">'+money(rate)+'</td><td class="right">'+money(amount)+'</td></tr>';
+    });
+    body.innerHTML='<div class="table-wrap"><table><thead><tr><th>Material / Work</th><th>Quantity</th><th>Unit</th><th class="right">Rate</th><th class="right">Amount</th></tr></thead><tbody>'+rows+'</tbody></table></div>';
+    box.appendChild(head); box.appendChild(body); el.appendChild(box);
+  });
+}
+function toggleStage(idx){document.querySelector('.stage[data-stage="'+idx+'"]').classList.toggle('open')}
+function openAllStages(){document.querySelectorAll('.stage').forEach(x=>x.classList.add('open'))}
+function closeAllStages(){document.querySelectorAll('.stage').forEach(x=>x.classList.remove('open'))}
+
+function renderBoq(){
+  const body=document.getElementById('boqBody');
+  const foot=document.getElementById('boqFoot');
+  const rows=buildBoq();
+  if(!rows.length){
+    body.innerHTML='<tr><td colspan="6" class="muted">Enter and save a project first.</td></tr>';
+    foot.innerHTML='';
+    return;
+  }
+  let total=0;
+  body.innerHTML=rows.map(row=>{
+    const [item,stage,qty,unit,rate]=row;
+    const amount=qty*rate; total+=amount;
+    return '<tr><td>'+item+'</td><td>'+stage+'</td><td>'+fmt(qty)+'</td><td>'+unit+'</td><td class="right">'+money(rate)+'</td><td class="right">'+money(amount)+'</td></tr>';
+  }).join('');
+  foot.innerHTML='<tr><th colspan="5" class="right">Total Estimated Cost</th><th class="right">'+money(total)+'</th></tr>';
+}
+function totalCost(){
+  return buildBoq().reduce((sum,row)=>sum+row[2]*row[4],0);
+}
+
+function renderRates(){
+  const r=getRates(), names={
+    cement:['Cement','bags'],steel:['Reinforcement steel','kg'],
+    sand:['Sand','m³'],aggregate:['Coarse aggregate','m³'],
+    brick:['Brick','Nos.'],aac:['AAC block','Nos.'],water:['Water','litres'],
+    labour:['Labour','man-days'],excavation:['Excavation','m³'],
+    pcc:['PCC','m³'],rcc:['RCC concrete','m³'],formwork:['Formwork','m²'],
+    plaster:['Plastering','m²'],flooring:['Flooring','m²'],
+    paint:['Painting & finishing','m²'],electrical:['Electrical works','point/allowance'],
+    plumbing:['Plumbing & sanitary','allowance'],waterproofing:['Waterproofing','m²'],
+    doorsWindows:['Doors / windows / glazing','m²'],external:['External works','m²'],
+    cleaning:['Cleaning / handover','m²'],bindingWire:['Binding wire','kg'],
+    primer:['Primer','m²']
+  };
+  const keys=Object.keys(DEMO_RATES);
+  document.getElementById('ratesBody').innerHTML=keys.map(k=>{
+    return '<tr><td>'+k+'</td><td>'+names[k][0]+'</td><td>'+names[k][1]+'</td><td><input id="rate-'+k+'" type="number" min="0" step="0.01" value="'+r[k]+'" style="width:150px;padding:8px;border:1px solid #d1d5db;border-radius:8px"></td></tr>';
+  }).join('');
+}
+function saveRates(){
+  const r={};
+  Object.keys(DEMO_RATES).forEach(k=>r[k]=Number(document.getElementById('rate-'+k).value)||0);
+  setRates(r);
+  document.getElementById('ratesMsg').innerHTML='<div class="good">Rates saved successfully.</div>';
+  renderBoq(); renderStages(); updateDashboard();
+}
+function resetRates(){setRates(DEMO_RATES);renderRates();document.getElementById('ratesMsg').innerHTML='<div class="notice">Demo rates restored.</div>';renderBoq();renderStages();updateDashboard()}
+
+function runTests(){
+  const p=getProject();
+  const c=calculate(p||{});
+  const rows=[];
+  function test(name,ok,detail){rows.push('<div class="'+(ok?'good':'warn')+'" style="margin-bottom:10px"><b>'+name+':</b> '+(ok?'PASS':'CHECK')+' — '+detail+'</div>')}
+  test('Project saved',!!p,'Project object exists in localStorage.');
+  test('Area valid',!!(p&&p.area>0),'Area = '+fmt(p?p.area:0)+' m².');
+  test('Total floor area',c.totalFloorArea>0,'Total floor area = '+fmt(c.totalFloorArea)+' m².');
+  test('Material quantities',c.cement>0&&c.steel>0&&c.sand>0,'Cement/steel/sand values are generated.');
+  test('A–Z stages',STAGES.length===15,'15 construction stages loaded.');
+  test('BOQ generated',buildBoq().length>0,'BOQ contains '+buildBoq().length+' rows.');
+  test('Cost generated',totalCost()>=0,'Estimated cost = '+money(totalCost())+'.');
+  document.getElementById('testResults').innerHTML=rows.join('');
+}
+
+function renderReport(){
+  const p=getProject();
+  if(!p || !p.area){
+    document.getElementById('reportContent').innerHTML='<div class="warn">No saved project. Open Project Input and calculate first.</div>';
+    return;
+  }
+  const c=calculate(p);
+  const cost=totalCost();
+  document.getElementById('reportContent').innerHTML=`
+    <div class="grid grid-2">
+      <div><b>Project Location:</b><br>${escapeHtml(p.location)}</div>
+      <div><b>Building Type:</b><br>${escapeHtml(p.buildingType)}</div>
+      <div><b>Area:</b><br>${fmt(p.area)} m²</div>
+      <div><b>Floors:</b><br>${p.floors}</div>
+      <div><b>Rooms:</b><br>${p.rooms}</div>
+      <div><b>Foundation:</b><br>${escapeHtml(p.foundation)}</div>
+      <div><b>Wall Material:</b><br>${escapeHtml(p.wallMaterial)}</div>
+      <div><b>Concrete Grade:</b><br>${escapeHtml(p.concreteGrade)}</div>
+    </div>
+    <hr>
+    <div class="grid grid-3">
+      <div class="card"><div class="muted">Cement</div><div class="kpi">${fmt(c.cement)}</div><div class="muted">bags</div></div>
+      <div class="card"><div class="muted">Steel</div><div class="kpi">${fmt(c.steel)}</div><div class="muted">kg</div></div>
+      <div class="card"><div class="muted">Sand</div><div class="kpi">${fmt(c.sand)}</div><div class="muted">m³</div></div>
+      <div class="card"><div class="muted">Aggregate</div><div class="kpi">${fmt(c.aggregate)}</div><div class="muted">m³</div></div>
+      <div class="card"><div class="muted">Blocks / Bricks</div><div class="kpi">${fmt(c.blocks,0)}</div><div class="muted">Nos.</div></div>
+      <div class="card"><div class="muted">Labour</div><div class="kpi">${fmt(c.labour)}</div><div class="muted">man-days</div></div>
+    </div>
+    <hr>
+    <h3>Estimated Cost</h3>
+    <div class="kpi">${money(cost)}</div>
+    <p class="muted">Prototype estimate based on the current demo factors and editable rates.</p>
+    <div class="warn"><b>Use limitation:</b> This software is an academic prototype. Final construction quantities and costs must be verified from project drawings, specifications, measurement rules, applicable current standards and current location-specific rates.</div>
+  `;
+}
+function escapeHtml(s){
+  return String(s??'').replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[ch]));
+}
+
+function saveProject(){
+  const p={
+    area:Number(document.getElementById('area').value),
+    buildingType:document.getElementById('buildingType').value,
+    floors:Number(document.getElementById('floors').value),
+    rooms:Number(document.getElementById('rooms').value),
+    foundation:document.getElementById('foundation').value,
+    wallMaterial:document.getElementById('wallMaterial').value,
+    concreteGrade:document.getElementById('concreteGrade').value,
+    location:document.getElementById('location').value
+  };
+  if(!(p.area>0) || !(p.floors>0) || !(p.rooms>0)){
+    document.getElementById('projectMsg').innerHTML='<div class="warn">Please enter valid positive values for area, floors and rooms.</div>';
+    return;
+  }
+  setProject(p);
+  document.getElementById('projectMsg').innerHTML='<div class="good">Project saved and quantities recalculated.</div>';
+  updateDashboard(); renderStages(); renderBoq(); renderReport();
+}
+function loadProject(){
+  const p=getProject();
+  if(!p){document.getElementById('projectMsg').innerHTML='<div class="warn">No saved project found.</div>';return;}
+  document.getElementById('area').value=p.area;
+  document.getElementById('buildingType').value=p.buildingType;
+  document.getElementById('floors').value=p.floors;
+  document.getElementById('rooms').value=p.rooms;
+  document.getElementById('foundation').value=p.foundation;
+  document.getElementById('wallMaterial').value=p.wallMaterial;
+  document.getElementById('concreteGrade').value=p.concreteGrade;
+  document.getElementById('location').value=p.location;
+  document.getElementById('projectMsg').innerHTML='<div class="notice">Saved project values loaded.</div>';
+}
+function clearProject(){
+  localStorage.removeItem('buildingProject');
+  document.getElementById('projectMsg').innerHTML='<div class="notice">Project cleared.</div>';
+  updateDashboard(); renderStages(); renderBoq(); renderReport();
+}
+function recalculate(){
+  if(getProject()){renderStages();renderBoq();renderReport();updateDashboard();}
+  else renderStages();
+}
+
+function updateDashboard(){
+  const p=getProject();
+  if(!p){
+    document.getElementById('dashArea').textContent='0 m²';
+    document.getElementById('dashFloors').textContent='0';
+    document.getElementById('dashCost').textContent='₹0';
+    document.getElementById('dashProject').textContent='No project saved.';
+    return;
+  }
+  document.getElementById('dashArea').textContent=fmt(p.area)+' m²';
+  document.getElementById('dashFloors').textContent=String(p.floors);
+  document.getElementById('dashCost').textContent=money(totalCost());
+  document.getElementById('dashProject').innerHTML=
+    '<b>'+escapeHtml(p.buildingType)+'</b> • '+fmt(p.area)+' m² • '+p.floors+' floor(s) • '+p.rooms+' room(s) • '+escapeHtml(p.wallMaterial)+' • '+escapeHtml(p.foundation);
+}
+
+function go(page){
+  document.querySelectorAll('.page').forEach(x=>x.classList.remove('active'));
+  document.getElementById(page).classList.add('active');
+  document.querySelectorAll('.nav button').forEach(b=>b.classList.toggle('active',b.dataset.page===page));
+  if(page==='materials')renderStages();
+  if(page==='boq')renderBoq();
+  if(page==='rates')renderRates();
+  if(page==='validation')runTests();
+  if(page==='report')renderReport();
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+document.querySelectorAll('.nav button').forEach(btn=>btn.addEventListener('click',()=>go(btn.dataset.page)));
+
+window.addEventListener('DOMContentLoaded',()=>{
+  loadProject();
+  updateDashboard();
+  renderStages();
+  renderBoq();
+  renderRates();
+  renderReport();
+  document.querySelector('[data-page="dashboard"]').classList.add('active');
+});
+</script>
+</body>
+</html>
